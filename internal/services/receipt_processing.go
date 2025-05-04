@@ -10,6 +10,7 @@ import (
 	"receipt-wrangler/api/internal/repositories"
 	"receipt-wrangler/api/internal/structs"
 	"receipt-wrangler/api/internal/utils"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -56,30 +57,6 @@ func NewSystemReceiptProcessingService(tx *gorm.DB, groupId string) (ReceiptProc
 		Group:                             group,
 	}, nil
 
-}
-
-func NewReceiptProcessingService(tx *gorm.DB, receiptProcessingSettingsId string, fallbackReceiptProcessingSettingsId string) (ReceiptProcessingService, error) {
-	service := ReceiptProcessingService{BaseService: BaseService{
-		DB: repositories.GetDB(),
-		TX: tx,
-	}}
-
-	receiptProcessingSettingsRepository := repositories.NewReceiptProcessingSettings(nil)
-	receiptProcessingSettings, err := receiptProcessingSettingsRepository.GetReceiptProcessingSettingsById(receiptProcessingSettingsId)
-	if err != nil {
-		return service, err
-	}
-	service.ReceiptProcessingSettings = receiptProcessingSettings
-
-	if len(fallbackReceiptProcessingSettingsId) > 0 && fallbackReceiptProcessingSettingsId != "0" {
-		fallbackReceiptProcessingSettings, err := receiptProcessingSettingsRepository.GetReceiptProcessingSettingsById(fallbackReceiptProcessingSettingsId)
-		if err != nil {
-			return service, err
-		}
-		service.FallbackReceiptProcessingSettings = fallbackReceiptProcessingSettings
-	}
-
-	return service, nil
 }
 
 func (service ReceiptProcessingService) ReadReceiptImage(
@@ -208,7 +185,6 @@ func (service ReceiptProcessingService) processImage(
 	}
 
 	cleanedResponse := service.cleanResponse(response)
-
 	err = json.Unmarshal([]byte(cleanedResponse), &receipt)
 	if err != nil {
 		return result, err
@@ -221,7 +197,8 @@ func (service ReceiptProcessingService) processImage(
 func (service ReceiptProcessingService) cleanResponse(response string) string {
 	response = strings.ReplaceAll(response, "```json", "")
 	response = strings.ReplaceAll(response, "```", "")
-	return response
+	re := regexp.MustCompile(`(?s)\{.*}`) // (?s) enables dot to match newlines
+	return re.FindString(response)
 }
 
 // TODO: move to new ai client
