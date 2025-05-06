@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 )
 
 var logger *log.Logger
@@ -37,10 +38,6 @@ func InitLog() error {
 	return nil
 }
 
-func GetLogger() *log.Logger {
-	return logger
-}
-
 func LogStd(level LogLevel, v ...any) {
 	_, file, line, _ := runtime.Caller(1)
 	lineInfo := fmt.Sprintf("[%s:%d]", filepath.Base(file), line)
@@ -48,11 +45,15 @@ func LogStd(level LogLevel, v ...any) {
 	v = append([]any{lineInfo, levelString}, v...)
 
 	if level == LOG_LEVEL_FATAL {
+		stackTrace := string(debug.Stack())
+		v = append(v, "\nStack Trace:\n", stackTrace)
 		logger.Println(v...)
 		stdLogger.Println(v...)
 		os.Exit(1)
 	}
 	if level == LOG_LEVEL_ERROR {
+		stackTrace := string(debug.Stack())
+		v = append(v, "\nStack Trace:\n", stackTrace)
 		logger.Println(v...)
 		stdLogger.Println(v...)
 	}
