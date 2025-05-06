@@ -42,23 +42,28 @@ func LogStd(level LogLevel, v ...any) {
 	_, file, line, _ := runtime.Caller(1)
 	lineInfo := fmt.Sprintf("[%s:%d]", filepath.Base(file), line)
 	levelString := fmt.Sprintf("%s: ", level)
-	v = append([]any{lineInfo, levelString}, v...)
+
+	// Check if the first argument is an error
+	var message string
+	if len(v) > 0 {
+		if err, ok := v[0].(error); ok {
+			message = fmt.Sprintf("%s%s%s", lineInfo, levelString, err.Error())
+		} else {
+			message = fmt.Sprint(append([]any{lineInfo, levelString}, v...)...)
+		}
+	} else {
+		message = fmt.Sprintf("%s%s", lineInfo, levelString)
+	}
+
+	if level == LOG_LEVEL_FATAL || level == LOG_LEVEL_ERROR {
+		stackTrace := string(debug.Stack())
+		message = fmt.Sprintf("%s\nStack Trace:\n%s", message, stackTrace)
+	}
+
+	logger.Println(message)
+	stdLogger.Println(message)
 
 	if level == LOG_LEVEL_FATAL {
-		stackTrace := string(debug.Stack())
-		v = append(v, "\nStack Trace:\n", stackTrace)
-		logger.Println(v...)
-		stdLogger.Println(v...)
 		os.Exit(1)
-	}
-	if level == LOG_LEVEL_ERROR {
-		stackTrace := string(debug.Stack())
-		v = append(v, "\nStack Trace:\n", stackTrace)
-		logger.Println(v...)
-		stdLogger.Println(v...)
-	}
-	if level == LOG_LEVEL_INFO {
-		logger.Println(v...)
-		stdLogger.Println(v...)
 	}
 }
