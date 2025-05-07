@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"gopkg.in/gographics/imagick.v3/imagick"
 	"gorm.io/gorm"
 	"os"
@@ -20,6 +21,15 @@ type ReceiptProcessingService struct {
 	ReceiptProcessingSettings         models.ReceiptProcessingSettings
 	FallbackReceiptProcessingSettings models.ReceiptProcessingSettings
 	Group                             models.Group
+}
+
+type JSONUnmarshalError struct {
+	RawJSON string
+	Err     error
+}
+
+func (e *JSONUnmarshalError) Error() string {
+	return fmt.Sprintf("failed to unmarshal JSON: %v, raw JSON: %s", e.Err, e.RawJSON)
 }
 
 func NewSystemReceiptProcessingService(tx *gorm.DB, groupId string) (ReceiptProcessingService, error) {
@@ -187,7 +197,10 @@ func (service ReceiptProcessingService) processImage(
 	cleanedResponse := service.cleanResponse(response)
 	err = json.Unmarshal([]byte(cleanedResponse), &receipt)
 	if err != nil {
-		return result, err
+		return result, &JSONUnmarshalError{
+			RawJSON: cleanedResponse,
+			Err:     err,
+		}
 	}
 
 	result.Receipt = receipt
